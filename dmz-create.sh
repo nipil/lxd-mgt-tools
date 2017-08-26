@@ -7,11 +7,11 @@ DMZ_DEC_PAD=$(printf "%03d" "${1}")
 DMZ_HEX=$(printf "%02x" "${1}")
 
 lxc network create dmz-${DMZ_DEC_PAD} \
-  ipv4.address=10.0.${DMZ_DEC}.1/24 \
+  ipv4.address=10.0.${DMZ_DEC}.254/24 \
   ipv4.nat=false \
   ipv4.firewall=false \
   ipv4.dhcp=false \
-  ipv6.address=fd00::${DMZ_HEX}01/24 \
+  ipv6.address=fd00:0000:0000:00${DMZ_HEX}:FFFF:FFFF:FFFF:FFFE/64 \
   ipv6.nat=false \
   ipv6.firewall=false \
   ipv6.dhcp=false
