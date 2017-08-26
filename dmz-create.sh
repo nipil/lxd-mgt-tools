@@ -6,6 +6,9 @@ DMZ_DEC=$(printf "%d" "${1}")
 DMZ_DEC_PAD=$(printf "%03d" "${1}")
 DMZ_HEX=$(printf "%02x" "${1}")
 
+lxc network show dmz-${DMZ_DEC_PAD} 1>&- 2>&-
+[ ${?} -ne 0 ] || { 1>&2 echo "Network ${1} already exists" ; exit 1 ; }
+
 lxc network create dmz-${DMZ_DEC_PAD} \
   ipv4.address=10.0.${DMZ_DEC}.254/24 \
   ipv4.nat=false \
@@ -15,3 +18,8 @@ lxc network create dmz-${DMZ_DEC_PAD} \
   ipv6.nat=false \
   ipv6.firewall=false \
   ipv6.dhcp=false
+
+RES=${?}
+[ ${RES} -ne 0 ] || { 1>&2 echo "Network creation exited with code ${RES}"; }
+
+exit 0
