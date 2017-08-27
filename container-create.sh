@@ -15,9 +15,6 @@ DMZ_HEX=$(printf "%02x" "${1}")
 VM_DEC=$(printf "%d" "${2}")
 VM_HEX=$(printf "%02x" "${2}")
 
-lxc network show dmz-${DMZ_DEC_PAD} 1>&- 2>&-
-[ ${?} -eq 0 ] || { 1>&2 echo "Network ${1} does not exist" ; exit 1 ; }
-
 lxc info ${3} 1>&- 2>&-
 [ ${?} -ne 0 ] || { 1>&2 echo "VM ${3} does already exist" ; exit 1 ; }
 
@@ -44,12 +41,8 @@ config:
 EOF
 [ ${?} -eq 0 ] || { "Error while creating cloud-init configuration (return code ${?}" ; rm -f ${TMP} ; exit 1 ; }
 
-lxc init --network dmz-${DMZ_DEC_PAD} --config user.network-config="$(cat ${TMP})" ubuntu:xenial ${3}
+lxc init --network vlan${DMZ_DEC} --config user.network-config="$(cat ${TMP})" ubuntu:xenial ${3}
 [ ${?} -eq 0 ] || { "Error while creating container (return code ${?}" ; rm -f ${TMP} ; exit 1 ; }
-
-echo "net.ipv6.conf.eth0.autoconf = 0" > ${TMP}
-lxc file push ${TMP} ${3}/etc/sysctl.d/98-disable-ipv6-autoconfiguration.conf
-[ ${?} -eq 0 ] || { "Error while disabling IPv6 autoconfiguration (return code ${?}" ; rm -f ${TMP} ; exit 1 ; }
 
 lxc start ${3}
 [ ${?} -eq 0 ] || { "Error while starting container (return code ${?}" ; rm -f ${TMP} ; exit 1 ; }
