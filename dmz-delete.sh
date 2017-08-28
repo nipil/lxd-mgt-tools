@@ -6,13 +6,10 @@
 
 DMZ_DEC=$(printf "%d" "${1}")
 DMZ_HEX=$(printf "%02x" "${1}")
-IF="vlan${DMZ_DEC}"
+IF="dmz${DMZ_DEC}"
 
 ifdown ${IF}
 [ ${?} -eq 0 ] || { 1>&2 echo "Interface de-configuraiton exited with code ${?}"; }
-
-ovs-vsctl del-br vlan${DMZ_DEC}
-[ ${?} -eq 0 ] || { 1>&2 echo "Bridge deletion ended with code ${?}"; }
 
 rm /etc/network/interfaces.d/50-${IF}.conf
 [ ${?} -eq 0 ] || { 1>&2 echo "Interface configuration deletion ended with code ${?}"; }

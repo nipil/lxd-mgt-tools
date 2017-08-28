@@ -6,19 +6,16 @@
 
 DMZ_DEC=$(printf "%d" "${1}")
 DMZ_HEX=$(printf "%02x" "${1}")
-IF="vlan${DMZ_DEC}"
-
-ovs-vsctl add-br vlan${DMZ_DEC}
-
-ovs-vsctl br-exists vlan${DMZ_DEC}
-[ ${?} -eq 0 ] || { 1>&2 echo "Bridge could not be created"; exit 1; }
+IF="dmz${DMZ_DEC}"
 
 cat << EOF | tee /etc/network/interfaces.d/50-${IF}.conf
 auto ${IF}
 iface ${IF} inet static
+	bridge_ports none
         address 10.0.${DMZ_DEC}.254/24
 
 iface ${IF} inet6 static
+	bridge_ports none
         address fd00:0000:0000:00${DMZ_HEX}:FFFF:FFFF:FFFF:FFFE/64
 EOF
 [ ${?} -eq 0 ] || { 1>&2 echo "Interface configuraiton exited with code ${?}"; exit 1; }

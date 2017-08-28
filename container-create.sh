@@ -37,11 +37,14 @@ config:
         control: auto
   - type: nameserver
     address:
-        194.132.32.32 46.246.46.246 2001:67C:1350:DEAD:BEEF::246 2C0F:F930:DEAD:BEEF::32
+        194.132.32.32
+        46.246.46.246
+        2C0F:F930:DEAD:BEEF::32
+        2001:67C:1350:DEAD:BEEF::246
 EOF
 [ ${?} -eq 0 ] || { "Error while creating cloud-init configuration (return code ${?}" ; rm -f ${TMP} ; exit 1 ; }
 
-lxc init --network vlan${DMZ_DEC} --config user.network-config="$(cat ${TMP})" ubuntu:xenial ${3}
+lxc init --network dmz${DMZ_DEC} --config user.network-config="$(cat ${TMP})" ubuntu:xenial ${3}
 [ ${?} -eq 0 ] || { "Error while creating container (return code ${?}" ; rm -f ${TMP} ; exit 1 ; }
 
 lxc start ${3}
