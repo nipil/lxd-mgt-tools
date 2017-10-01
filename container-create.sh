@@ -2,7 +2,7 @@
 
 [ ${#} -eq 3 ] || { 1>&2 echo "Usage: ${0} dmz cnum cname"; exit 1 ; }
 
-[ ${1} -ge 1 -a ${1} -le 255 ] || { 1>&2 echo "Invalid DMZ number ${1}" ; exit 1 ; }
+[ ${1} -ge 0 -a ${1} -le 255 ] || { 1>&2 echo "Invalid DMZ number ${1}" ; exit 1 ; }
 
 [ ${2} -ge 1 -a ${2} -le 255 ] || { 1>&2 echo "Invalid container number ${2}" ; exit 1 ; }
 
