@@ -22,7 +22,7 @@ TMP=$(mktemp)
 [ ${?} -eq 0 ] || { 1>&2 echo "Impossible to create temporary file" ; exit 1 ; }
 
 lxc init --network dmz${DMZ_DEC} images:debian/stretch ${3}
-[ ${?} -eq 0 ] || { "Error while creating container (return code ${?}" ; rm -f ${TMP} ; exit 1 ; }
+[ ${?} -eq 0 ] || { 1>&2 echo "Error while creating container (return code ${?})" ; rm -f ${TMP} ; exit 1 ; }
 
 cat << EOF > ${TMP}
 nameserver 194.132.32.32
