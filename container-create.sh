@@ -21,31 +21,35 @@ lxc info ${3} 1>&- 2>&-
 TMP=$(mktemp)
 [ ${?} -eq 0 ] || { 1>&2 echo "Impossible to create temporary file" ; exit 1 ; }
 
-cat << EOF > ${TMP}
-version: 1
-config:
-  - type: physical
-    name: eth0
-    subnets:
-      - type: static
-        address: 10.0.${DMZ_DEC}.${VM_DEC}/24
-        gateway: 10.0.${DMZ_DEC}.254
-        control: auto
-      - type: static
-        address: fd00:0000:0000:00${DMZ_HEX}:0000:0000:0000:00${VM_HEX}/64
-        gateway: fd00:0000:0000:00${DMZ_HEX}:FFFF:FFFF:FFFF:FFFE
-        control: auto
-  - type: nameserver
-    address:
-        194.132.32.32
-        46.246.46.246
-        2C0F:F930:DEAD:BEEF::32
-        2001:67C:1350:DEAD:BEEF::246
-EOF
-[ ${?} -eq 0 ] || { "Error while creating cloud-init configuration (return code ${?}" ; rm -f ${TMP} ; exit 1 ; }
-
-lxc init --network dmz${DMZ_DEC} --config user.network-config="$(cat ${TMP})" ubuntu:xenial ${3}
+lxc init --network dmz${DMZ_DEC} images:debian/stretch ${3}
 [ ${?} -eq 0 ] || { "Error while creating container (return code ${?}" ; rm -f ${TMP} ; exit 1 ; }
+
+cat << EOF > ${TMP}
+nameserver 194.132.32.32
+nameserver 46.246.46.246
+nameserver 2C0F:F930:DEAD:BEEF::32
+nameserver 2001:67C:1350:DEAD:BEEF::246
+EOF
+
+lxc file push --uid=0 --gid=0 --mode=644 ${TMP} ${3}/etc/resolv.conf
+[ ${?} -eq 0 ] || { "Error while pushing resolver configuration (return code ${?}" ; rm -f ${TMP} ; exit 1 ; }
+
+cat << EOF > ${TMP}
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+    address 10.0.${DMZ_DEC}.${VM_DEC}/24
+    gateway 10.0.${DMZ_DEC}.254
+
+iface eth0 inet6 static
+    address fd00:0000:0000:00${DMZ_HEX}:0000:0000:0000:00${VM_HEX}/64
+    gateway fd00:0000:0000:00${DMZ_HEX}:FFFF:FFFF:FFFF:FFFE
+EOF
+
+lxc file push --uid=0 --gid=0 --mode=644 ${TMP} ${3}/etc/network/interfaces
+[ ${?} -eq 0 ] || { "Error while pushing network configuration (return code ${?}" ; rm -f ${TMP} ; exit 1 ; }
 
 lxc start ${3}
 [ ${?} -eq 0 ] || { "Error while starting container (return code ${?}" ; rm -f ${TMP} ; exit 1 ; }
