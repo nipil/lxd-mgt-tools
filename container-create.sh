@@ -1,35 +1,11 @@
 #!/usr/bin/env bash
 
 #####################################################################
-# CONFIGURATION
+# DEFAULT CONFIGURATION
 #####################################################################
 
-STORAGE="files"
-
-#####################################################################
-# ARGS
-#####################################################################
-
-[ ${#} -ge 3 ] || { 1>&2 echo "Usage: ${0} dmz cnum cname"; exit 1 ; }
-
-[ ${1} -ge 0 -a ${1} -le 255 ] || { 1>&2 echo "Invalid DMZ number ${1}" ; exit 1 ; }
-
-DMZ_DEC=$(printf "%d" "${1}")
-DMZ_DEC_PAD=$(printf "%03d" "${1}")
-DMZ_HEX=$(printf "%02x" "${1}")
-
-[ ${2} -ge 1 -a ${2} -le 255 ] || { 1>&2 echo "Invalid container number ${2}" ; exit 1 ; }
-
-VM_DEC=$(printf "%d" "${2}")
-VM_HEX=$(printf "%02x" "${2}")
-
-[ -n "${3}" ] || { 1>&2 echo "A name is required for the container" ; exit 1 ; }
-
-CONTAINER="${3}"
-
-shift 3
-
-PACKAGES="${@}"
+DEFAULT_STORAGE="./files"
+DEFAULT_SETUP_ONLY=0
 
 #####################################################################
 # FUNCTIONS
@@ -89,17 +65,82 @@ function container_exec {
     check_return_code_success "Command ${@} returned ${?}"
 }
 
+function display_usage {
+    local BOLD REV OFF
+    BOLD='\033[1;31m' # Bold Red
+    REV='\033[1;32m'  # Bold Green
+    OFF='\033[0m'
+    echo -e "${REV}Usage:${OFF} ${0} [-f DIR] [-s] DMZ INDEX NAME [PKG [PKG] ...]"
+    echo -e "\nThe following switches are recognized:"
+    echo -e "${REV}-f${OFF} Sets the temporary storage directory for files pushed to the container. Default is ${BOLD}${DEFAULT_STORAGE}${OFF}"
+    echo -e "${REV}-s${OFF} Disables container check/creation, does only setup. Default is ${BOLD}${DEFAULT_SETUP_ONLY}${OFF}"
+    echo -e "\nExample: ${BOLD}${0} 1 3 vm nano${OFF}"
+    exit 1
+}
+
+#####################################################################
+# ARGS
+#####################################################################
+
+while getopts sf:h FLAG
+do
+  case ${FLAG} in
+    s)
+      CUSTOM_SETUP_ONLY=1
+      ;;
+    f)
+      CUSTOM_STORAGE="${OPTARG}"
+      ;;
+    h)
+      display_usage
+      ;;
+    \?) #unrecognized option - show help
+      echo -e \\n"Option -${OPTARG} not allowed."
+      display_usage
+      ;;
+  esac
+done
+
+shift "$((OPTIND-1))"
+
+[ ${#} -ge 3 ] || display_usage
+
+#####################################################################
+# SETTINGS
+#####################################################################
+
+[ ${1} -ge 0 -a ${1} -le 255 ] || { 1>&2 echo "Invalid DMZ number ${1}" ; exit 1 ; }
+DMZ_DEC=$(printf "%d" "${1}")
+DMZ_DEC_PAD=$(printf "%03d" "${1}")
+DMZ_HEX=$(printf "%02x" "${1}")
+
+[ ${2} -ge 1 -a ${2} -le 255 ] || { 1>&2 echo "Invalid container number ${2}" ; exit 1 ; }
+VM_DEC=$(printf "%d" "${2}")
+VM_HEX=$(printf "%02x" "${2}")
+
+[ -n "${3}" ] || { 1>&2 echo "A name is required for the container" ; exit 1 ; }
+CONTAINER="${3}"
+
+shift 3
+PACKAGES="${@}"
+
+SETUP_ONLY="${CUSTOM_SETUP_ONLY:-${DEFAULT_SETUP_ONLY}}"
+STORAGE="${CUSTOM_STORAGE:-${DEFAULT_STORAGE}}"
+
 #####################################################################
 # MAIN SCRIPT
 #####################################################################
 
-info "Check that container does not exist"
-lxc info "${CONTAINER}" 1>&- 2>&-
-check_return_code_fail "Container ${CONTAINER} already exists"
+if [[ ${SETUP_ONLY} -eq 0 ]]
+then
+    info "Check that container does not exist"
+    lxc info "${CONTAINER}" 1>&- 2>&-
+    check_return_code_fail "Container ${CONTAINER} already exists"
 
-info "Create container (without starting it)"
-lxc init --network dmz${DMZ_DEC} images:debian/stretch ${CONTAINER}
-check_return_code_success "Creating container failed (return code ${?})"
+    info "Create container (without starting it)"
+    lxc init --network dmz${DMZ_DEC} images:debian/stretch ${CONTAINER}
+    check_return_code_success "Creating container failed (return code ${?})"
+fi
 
 info "Setup resolver"
 store_content "/etc/resolv.conf" \
@@ -131,12 +172,15 @@ store_content "/usr/local/sbin/apt-up" \
 'apt-get update && apt-get upgrade "${@}" && apt-get dist-upgrade "${@}" && apt-get autoremove "${@}" && apt-get clean' \
 0 0 775
 
-info "Start container"
-lxc start ${CONTAINER}
-check_return_code_success "Could not start ${CONTAINER}"
+if [[ ${SETUP_ONLY} -eq 0 ]]
+then
+    info "Start container"
+    lxc start ${CONTAINER}
+    check_return_code_success "Could not start ${CONTAINER}"
 
-info "Give it some time to start"
-sleep 5
+    info "Give it some time to start"
+    sleep 5
+fi
 
 info "Persist journald on disk"
 container_exec sed -i -e 's,.*Storage=.*,Storage=persistent,' -e 's,.*SystemMaxUse=.*,SystemMaxUse=100M,' /etc/systemd/journald.conf
