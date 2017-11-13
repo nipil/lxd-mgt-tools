@@ -165,6 +165,7 @@ iface eth0 inet6 static
 info "Setup apt-get behaviour"
 store_content "/etc/apt/apt.conf.d/99no-recommends" \
 'APT::Install-Recommends "false";
+APT::Get::Show-Versions "true";
 APT::Install-Suggests "false";'
 
 info "Setup apt-up script"
