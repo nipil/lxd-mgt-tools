@@ -162,6 +162,11 @@ iface eth0 inet6 static
     address fd00:0000:0000:00${DMZ_HEX}:0000:0000:0000:00${VM_HEX}/64
     gateway fd00:0000:0000:00${DMZ_HEX}:FFFF:FFFF:FFFF:FFFE"
 
+info "Setup timezone"
+container_exec bash -c "echo 'Europe/Paris' > /etc/timezone"
+container_exec rm /etc/localtime
+container_exec dpkg-reconfigure -f noninteractive tzdata
+
 info "Setup apt-get behaviour"
 store_content "/etc/apt/apt.conf.d/99no-recommends" \
 'APT::Install-Recommends "false";
